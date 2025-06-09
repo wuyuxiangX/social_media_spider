@@ -1,0 +1,54 @@
+# -*- coding: UTF-8 -*-
+import os
+import sys
+from abc import ABC, abstractmethod
+
+import requests
+from requests.adapters import HTTPAdapter
+from tqdm import tqdm
+
+
+class Downloader(ABC):
+    def __init__(self, file_dir, file_download_timeout):
+        self.file_dir = file_dir
+        self.describe = ''
+        self.key = ''
+        self.file_download_timeout = [5, 5, 10]
+        if (isinstance(file_download_timeout, list)
+                and len(file_download_timeout) == 3):
+            for i in range(3):
+                v = file_download_timeout[i]
+                if isinstance(v, (int, float)) and v > 0:
+                    self.file_download_timeout[i] = v
+
+    @abstractmethod
+    def handle_download(self, urls, w):
+        """下载 urls 里所指向的图片或视频文件，使用 w 里的信息来生成文件名"""
+        pass
+
+    def download_one_file(self, url, file_path, weibo_id):
+        """下载单个文件(图片/视频)"""
+        try:
+            if not os.path.isfile(file_path):
+                s = requests.Session()
+                s.mount(url,
+                        HTTPAdapter(max_retries=self.file_download_timeout[0]))
+                downloaded = s.get(url,
+                                   timeout=(self.file_download_timeout[1],
+                                            self.file_download_timeout[2]))
+                with open(file_path, 'wb') as f:
+                    f.write(downloaded.content)
+        except Exception as e:
+            error_file = self.file_dir + os.sep + 'not_downloaded.txt'
+            with open(error_file, 'ab') as f:
+                url = weibo_id + ':' + file_path + ':' + url + '\n'
+                f.write(url.encode(sys.stdout.encoding))
+
+    def download_files(self, weibos):
+        """下载文件(图片/视频)"""
+        try:
+            for w in tqdm(weibos, desc='Download progress'):
+                if getattr(w, self.key) != u'无':
+                    self.handle_download(getattr(w, self.key), w)
+        except Exception as e:
+            pass
