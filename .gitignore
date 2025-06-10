@@ -3,8 +3,8 @@ __pycache__/
 storage/bilibili/*
 !storage/bilibili/.gitkeep
 
-storage/jike/*
-!storage/jike/.gitkeep
+storage/*
+!storage/.gitkeep
 
 storage/weibo/*
 !storage/weibo/.gitkeep

@@ -3,9 +3,9 @@ import json
 import time
 import logging
 from typing import Optional, List, Dict, Any
-from utils import download_video
-from exAudio import process_audio_split
-import speech2text
+from spiders.bilibili.utils import download_video
+from spiders.bilibili.exAudio import process_audio_split
+import spiders.bilibili.speech2text as speech2text
 
 logger = logging.getLogger(__name__)
 
