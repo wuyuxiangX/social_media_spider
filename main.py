@@ -40,6 +40,7 @@ from routers.bilibili import bilibili_router
 from routers.jike import jike_router
 from routers.content import content_router
 from routers.account import account_router
+from routers.youtube import youtube_router
 
 # 包含路由
 app.include_router(weibo_router)
@@ -47,8 +48,9 @@ app.include_router(bilibili_router)
 app.include_router(jike_router)
 app.include_router(content_router)
 app.include_router(account_router)
+app.include_router(youtube_router)
 
 
 # 如果直接运行此文件，启动服务器
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=3001)
+    uvicorn.run(app, host="0.0.0.0", port=3002)

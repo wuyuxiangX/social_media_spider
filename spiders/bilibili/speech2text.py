@@ -45,15 +45,17 @@ def run_analysis(filename, model="tiny", prompt="以下是普通话的句子。"
         segment_text = "".join([i["text"] for i in result["segments"] if i is not None])
         print(segment_text)
         
-        # 添加到完整文本
-        full_text += segment_text + "\n"
-
-        # 如果不是只返回文本，则写入文件
-        if not return_text:
-            with open(f"{outputs_dir}/{filename}.txt", "a", encoding="utf-8") as f:
-                f.write(segment_text)
-                f.write("\n")
+        # 添加到完整文本，不添加换行符
+        full_text += segment_text + " "
         i += 1
+    
+    # 移除最后一个空格并保留完整文本
+    full_text = full_text.strip()
+    
+    # 如果不是只返回文本，则写入文件（一次性写入所有内容）
+    if not return_text:
+        with open(f"{outputs_dir}/{filename}.txt", "w", encoding="utf-8") as f:
+            f.write(full_text)
     
     # 如果需要返回文本，则返回完整文本
     if return_text:
