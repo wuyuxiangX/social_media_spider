@@ -21,6 +21,23 @@ account_router = APIRouter(
 # 账号存储文件路径
 ACCOUNTS_FILE = "/Users/wyx/code/Mindverse/spider/storage/accounts.json"
 
+# 平台特有信息模型（简化版，只保留关键信息）
+class PlatformInfo(BaseModel):
+    """平台特有信息基类"""
+    pass
+
+class BilibiliInfo(PlatformInfo):
+    """Bilibili平台特有信息"""
+    uid: Optional[str] = None  # 用户UID
+
+class JikeInfo(PlatformInfo):
+    """即刻平台特有信息"""
+    username: Optional[str] = None  # 即刻用户名
+
+class WeiboInfo(PlatformInfo):
+    """微博平台特有信息"""
+    user_id: Optional[str] = None  # 微博用户ID
+
 # 数据模型定义
 class AccountInfo(BaseModel):
     username: str  # 用户名
@@ -28,10 +45,33 @@ class AccountInfo(BaseModel):
     password: str  # 密码
     mind_id: str   # Mind ID
     token: str     # 认证token
-    platform: Optional[str] = "mindverse"  # 平台名称
     description: Optional[str] = ""  # 账号描述
+    platform_info: Optional[Dict[str, Any]] = None  # 平台特有信息
     created_at: Optional[str] = None  # 创建时间
     updated_at: Optional[str] = None  # 更新时间
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "username": "张雪峰老师",
+                "account": "zhangxuefeng@example.com",
+                "password": "password123",
+                "mind_id": "mind_123456",
+                "token": "token_abc123",
+                "description": "教育博主",
+                "platform_info": {
+                    "bilibili": {
+                        "uid": "123456789"
+                    },
+                    "jike": {
+                        "username": "zhangxuefeng"
+                    },
+                    "weibo": {
+                        "user_id": "1234567890"
+                    }
+                }
+            }
+        }
 
 class AccountCreateRequest(BaseModel):
     username: str
@@ -39,16 +79,50 @@ class AccountCreateRequest(BaseModel):
     password: str
     mind_id: str
     token: str
-    platform: Optional[str] = "mindverse"
     description: Optional[str] = ""
+    platform_info: Optional[Dict[str, Any]] = None  # 平台特有信息
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "username": "张雪峰老师",
+                "account": "zhangxuefeng@example.com",
+                "password": "password123",
+                "mind_id": "mind_123456",
+                "token": "token_abc123",
+                "description": "教育博主",
+                "platform_info": {
+                    "bilibili": {
+                        "uid": "123456789"
+                    },
+                    "jike": {
+                        "username": "zhangxuefeng"
+                    },
+                    "weibo": {
+                        "user_id": "1234567890"
+                    }
+                }
+            }
+        }
 
 class AccountUpdateRequest(BaseModel):
     account: Optional[str] = None
     password: Optional[str] = None
     mind_id: Optional[str] = None
     token: Optional[str] = None
-    platform: Optional[str] = None
     description: Optional[str] = None
+    platform_info: Optional[Dict[str, Any]] = None  # 平台特有信息
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "platform_info": {
+                    "bilibili": {
+                        "uid": "123456789"
+                    }
+                }
+            }
+        }
 
 class AccountResponse(BaseModel):
     success: bool
@@ -96,8 +170,13 @@ async def create_account(request: AccountCreateRequest):
     """
     创建新账号信息
     
+    支持的平台及其特有信息：
+    - bilibili: uid(用户UID), bv_number(BV号), space_url(个人空间URL), nickname(昵称)
+    - jike: jike_username(即刻用户名), user_id(用户ID), nickname(昵称), profile_url(个人主页URL)  
+    - weibo: user_id(微博用户ID), weibo_name(微博昵称), profile_url(个人主页URL), followers_count(粉丝数), following_count(关注数)
+    
     Args:
-        request: 账号创建请求参数
+        request: 账号创建请求参数，包含平台特有信息
     
     Returns:
         AccountResponse: 创建结果
@@ -118,8 +197,8 @@ async def create_account(request: AccountCreateRequest):
             password=request.password,
             mind_id=request.mind_id,
             token=request.token,
-            platform=request.platform,
             description=request.description,
+            platform_info=request.platform_info,
             created_at=current_time,
             updated_at=current_time
         )
@@ -175,9 +254,14 @@ async def update_account(username: str, request: AccountUpdateRequest):
     """
     更新账号信息
     
+    支持更新平台特有信息：
+    - bilibili: uid, bv_number, space_url, nickname
+    - jike: jike_username, user_id, nickname, profile_url  
+    - weibo: user_id, weibo_name, profile_url, followers_count, following_count
+    
     Args:
         username: 用户名
-        request: 更新请求参数
+        request: 更新请求参数，可包含平台特有信息更新
     
     Returns:
         AccountResponse: 更新结果
@@ -194,7 +278,17 @@ async def update_account(username: str, request: AccountUpdateRequest):
         update_data = request.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             if value is not None:
-                setattr(account, field, value)
+                if field == 'platform_info' and account.platform_info:
+                    # 对于平台信息，进行深度合并而不是直接替换
+                    existing_platform_info = account.platform_info.copy()
+                    for platform, info in value.items():
+                        if platform in existing_platform_info:
+                            existing_platform_info[platform].update(info)
+                        else:
+                            existing_platform_info[platform] = info
+                    setattr(account, field, existing_platform_info)
+                else:
+                    setattr(account, field, value)
         
         # 更新时间戳
         account.updated_at = datetime.now().isoformat()
@@ -269,50 +363,3 @@ async def list_accounts():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取账号列表失败: {str(e)}")
-
-
-@account_router.get("/search", response_model=AccountListResponse)
-async def search_accounts(
-    keyword: Optional[str] = None,
-    platform: Optional[str] = None
-):
-    """
-    搜索账号信息
-    
-    Args:
-        keyword: 搜索关键词（在用户名、账号、描述中搜索）
-        platform: 平台筛选
-    
-    Returns:
-        AccountListResponse: 搜索结果
-    """
-    try:
-        accounts = _load_accounts()
-        account_list = list(accounts.values())
-        
-        # 根据关键词筛选
-        if keyword:
-            keyword = keyword.lower()
-            account_list = [
-                account for account in account_list
-                if keyword in account.username.lower() 
-                or keyword in account.account.lower()
-                or keyword in account.description.lower()
-            ]
-        
-        # 根据平台筛选
-        if platform:
-            account_list = [
-                account for account in account_list
-                if account.platform == platform
-            ]
-        
-        return AccountListResponse(
-            success=True,
-            message=f"搜索完成，找到 {len(account_list)} 个匹配账号",
-            data=account_list,
-            total=len(account_list)
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"搜索账号失败: {str(e)}")

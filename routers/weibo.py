@@ -242,7 +242,7 @@ async def process_weibo_file(username: str):
 async def run_weibo_full_process(
     username: str,
     user_id: str,
-    since_date: Optional[str] = None,
+    since_date: str = "2001-01-01",
     cookie: Optional[str] = "SCF=AspoasABOe45QQA3C80FaQ1mAMADJijY0IYgO4vdS-IIteqqcnhSxf89-jHJSzNuzokM5fsmrWQyTCH6qNHdOGk.; SUB=_2A25FO7QjDeRhGeNH7FoZ9i7LzTWIHXVmOUnrrDV6PUJbktANLXnRkW1NSms3A3j8vHOb3qBiZk1XIib6I3A8_jW1; SUBP=0033WrSXqPxfM725Ws9jqgMF55529P9D9WFfmmwdXkzj_BsQNUT36l2A5NHD95Qf1KMR1hq7S0q4Ws4DqcjMi--NiK.Xi-2Ri--ciKnRi-zNSK.N1hncehMc1Btt; SSOLoginState=1749009523; ALF=1751601523; _T_WM=65bd31df0c9d1e6033e20c541b5f524a"
 ):
     """
