@@ -1,0 +1,59 @@
+# 基础依赖
+fastapi==0.109.2
+uvicorn==0.29.0
+pydantic==2.6.4
+typing_extensions==4.12.2
+requests==2.32.3
+
+# 爬虫相关
+yt-dlp==2024.4.9
+you-get==0.4.1743
+
+# 音频处理
+pydub==0.25.1
+whisper==1.1.10
+openai-whisper==20240930
+torch==2.5.0
+torchaudio==2.5.0
+ffmpeg-python==0.2.0
+
+# 图像处理
+pillow==10.4.0
+imageio==2.34.2
+imageio-ffmpeg==0.5.1
+moviepy==1.0.3
+
+# 工具库
+numpy==2.0.0
+tqdm==4.66.4
+regex==2024.9.11
+tiktoken==0.8.0
+colorama==0.4.6
+six==1.16.0
+
+# 其他依赖
+annotated-types==0.6.0
+argcomplete==3.2.2
+certifi==2024.7.4
+charset-normalizer==3.3.2
+click==8.1.7
+decorator==4.4.2
+filelock==3.16.1
+fsspec==2024.9.0
+idna==3.7
+Jinja2==3.1.4
+llvmlite==0.43.0
+MarkupSafe==3.0.2
+more-itertools==10.5.0
+mpmath==1.3.0
+networkx==3.4.1
+numba==0.60.0
+packaging==23.2
+pipx==1.4.3
+proglog==0.1.10
+pynput==1.7.6
+sniffio==1.3.0
+sympy==1.13.1
+ttkbootstrap==1.10.1
+urllib3==2.2.2
+userpath==1.9.1
