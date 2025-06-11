@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import json
+import asyncio
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -13,6 +14,7 @@ sys.path.append(parent_dir)
 
 from data_processor.bilibili import BilibiliDataProcessor
 from spiders.bilibili.main import BilibiliSpider
+from spiders.bilibili.get_urls import BilibiliUrlCollector, parse_page_input
 
 bilibili_router = APIRouter(
     prefix="/bilibili",
@@ -277,4 +279,127 @@ async def run_bilibili_full_process(
             success=False,
             message=f"完整流程失败: {str(e)}",
             data={}
+        )
+
+@bilibili_router.get("/collect-urls")
+async def collect_video_urls(
+    base_url: str,
+    page_numbers: str = "1",
+    debug_port: int = 9222
+):
+    """
+    收集B站视频URL
+    
+    Args:
+        base_url: 基础页面URL (如: https://space.bilibili.com/123456/video)
+        page_numbers: 页码，支持格式: "1", "1,3,5", "1-5", "1,3-5,8"
+        xpath: 可选的自定义XPath表达式，用于定位视频链接
+        debug_port: Chrome调试端口，默认9222
+    
+    Returns:
+        收集到的视频URL列表
+    """
+    try:
+        # 解析页码
+        page_list = parse_page_input(page_numbers)
+        if not page_list:
+            raise HTTPException(
+                status_code=400,
+                detail=f"页码格式错误，支持格式: '1', '1,3,5', '1-5', '1,3-5,8'"
+            )
+        
+        # 创建URL收集器
+        collector = BilibiliUrlCollector(use_existing_browser=True, debug_port=debug_port)
+        
+        try:
+            # 收集视频URL
+            video_urls = await collector.get_video_urls_with_pagination(
+                base_url=base_url,
+                page_numbers=page_list,
+            )
+            
+            if not video_urls:
+                return BilibiliResponse(
+                    success=False,
+                    message="没有找到任何视频URL",
+                    data={
+                        "base_url": base_url,
+                        "page_numbers": page_list,
+                        "video_urls": [],
+                        "url_count": 0
+                    }
+                )
+            
+            return BilibiliResponse(
+                success=True,
+                message=f"成功收集到 {len(video_urls)} 个视频URL",
+                data={
+                    "base_url": base_url,
+                    "page_numbers": page_list,
+                    "video_urls": video_urls,
+                    "url_count": len(video_urls),
+                    "urls_string": ",".join(video_urls)  # 方便复制粘贴的格式
+                }
+            )
+            
+        except Exception as e:
+            error_msg = str(e)
+            
+            # 检查是否是浏览器连接失败
+            if "无法连接到现有浏览器" in error_msg or "connect_over_cdp" in error_msg:
+                debug_instruction = f"""
+请先启动Chrome浏览器并开启调试模式：
+
+macOS:
+/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port={debug_port} --user-data-dir=/tmp/chrome-debug
+
+Windows:
+chrome.exe --remote-debugging-port={debug_port} --user-data-dir=C:\\temp\\chrome-debug
+
+Linux:
+google-chrome --remote-debugging-port={debug_port} --user-data-dir=/tmp/chrome-debug
+
+然后重新调用此接口。
+                """.strip()
+                
+                return BilibiliResponse(
+                    success=False,
+                    message=f"浏览器连接失败：{error_msg}",
+                    data={
+                        "error": error_msg,
+                        "debug_instruction": debug_instruction,
+                        "debug_port": debug_port,
+                        "base_url": base_url,
+                        "page_numbers": page_list
+                    }
+                )
+            else:
+                return BilibiliResponse(
+                    success=False,
+                    message=f"收集URL失败：{error_msg}",
+                    data={
+                        "error": error_msg,
+                        "base_url": base_url,
+                        "page_numbers": page_list
+                    }
+                )
+        
+        finally:
+            # 确保关闭收集器
+            try:
+                await collector.close()
+            except Exception as e:
+                print(f"关闭收集器时出错：{e}")
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        return BilibiliResponse(
+            success=False,
+            message=f"接口调用失败：{str(e)}",
+            data={
+                "error": str(e),
+                "base_url": base_url,
+                "page_numbers": page_numbers
+            }
         )
